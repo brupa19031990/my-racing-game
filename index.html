@@ -1,1 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Racing Game</title>
 
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #111;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+canvas {
+  display: block;
+  margin: auto;
+  background: #555;
+  max-width: 100vw;
+  max-height: 100vh;
+}
+
+#controls {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 30px;
+  pointer-events: none;
+}
+
+button {
+  pointer-events: auto;
+  width: 80px;
+  height: 65px;
+  font-size: 30px;
+  border: none;
+  border-radius: 15px;
+  background: rgba(255,255,255,0.7);
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game" width="500" height="700"></canvas>
+
+<div id="controls">
+  <button id="left">⬅️</button>
+  <button id="right">➡️</button>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {
+  x: 225,
+  y: 570,
+  width: 50,
+  height: 90,
+  speed: 7
+};
+
+let enemy = {
+  x: 300,
+  y: -120,
+  width: 50,
+  height: 90,
+  speed: 5
+};
+
+let score = 0;
+let gameOver = false;
+
+let leftPressed = false;
+let rightPressed = false;
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a")
+    leftPressed = true;
+
+  if (e.key === "ArrowRight" || e.key.toLowerCase() === "d")
+    rightPressed = true;
+
+  if (gameOver && e.key === "Enter")
+    location.reload();
+});
+
+document.addEventListener("keyup", function(e) {
+  if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a")
+    leftPressed = false;
+
+  if (e.key === "ArrowRight" || e.key.toLowerCase() === "d")
+    rightPressed = false;
+});
+
+function holdButton(button, direction) {
+  button.addEventListener("touchstart", e => {
+    e.preventDefault();
+    direction(true);
+  });
+
+  button.addEventListener("touchend", e => {
+    e.preventDefault();
+    direction(false);
+  });
+
+  button.addEventListener("mousedown", () => direction(true));
+  button.addEventListener("mouseup", () => direction(false));
+  button.addEventListener("mouseleave", () => direction(false));
+}
+
+holdButton(document.getElementById("left"), v => leftPressed = v);
+holdButton(document.getElementById("right"), v => rightPressed = v);
+
+function drawRoad() {
+
+  // Grass
+  ctx.fillStyle = "#168a2f";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Road
+  ctx.fillStyle = "#333";
+  ctx.fillRect(70, 0, 360, canvas.height);
+
+  // Road edges
+  ctx.fillStyle = "white";
+  ctx.fillRect(65, 0, 5, canvas.height);
+  ctx.fillRect(430, 0, 5, canvas.height);
+
+  // Lane markings
+  ctx.fillStyle = "white";
+
+  for (let y = -50; y < canvas.height; y += 100) {
+    ctx.fillRect(245, y, 10, 60);
+  }
+}
+
+function drawCar(car, color) {
+
+  // Body
+  ctx.fillStyle = color;
+  ctx.fillRect(car.x, car.y, car.width, car.height);
+
+  // Windows
+  ctx.fillStyle = "#111";
+  ctx.fillRect(car.x + 8, car.y + 12, 34, 25);
+
+  // Wheels
+  ctx.fillStyle = "black";
+  ctx.fillRect(car.x - 6, car.y + 15, 7, 22);
+  ctx.fillRect(car.x + car.width - 1, car.y + 15, 7, 22);
+  ctx.fillRect(car.x - 6, car.y + 55, 7, 22);
+  ctx.fillRect(car.x + car.width - 1, car.y + 55, 7, 22);
+
+  // Lights
+  ctx.fillStyle = "yellow";
+  ctx.fillRect(car.x + 7, car.y + 2, 10, 6);
+  ctx.fillRect(car.x + 33, car.y + 2, 10, 6);
+}
+
+function collision(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+function update() {
+
+  if (gameOver) return;
+
+  if (leftPressed)
+    player.x -= player.speed;
+
+  if (rightPressed)
+    player.x += player.speed;
+
+  // Keep player on road
+  if (player.x < 75)
+    player.x = 75;
+
+  if (player.x > 375)
+    player.x = 375;
+
+  enemy.y += enemy.speed;
+
+  if (enemy.y > canvas.height) {
+    enemy.y = -120;
+    enemy.x = 90 + Math.random() * 290;
+    score++;
+
+    // Increase difficulty
+    enemy.speed += 0.3;
+  }
+
+  if (collision(player, enemy)) {
+    gameOver = true;
+  }
+}
+
+function draw() {
+
+  drawRoad();
+
+  drawCar(player, "#008cff");
+  drawCar(enemy, "#ff2222");
+
+  // Score
+  ctx.fillStyle = "white";
+  ctx.font = "bold 25px Arial";
+  ctx.fillText("Score: " + score, 15, 35);
+
+  if (gameOver) {
+
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "white";
+    ctx.font = "bold 45px Arial";
+    ctx.fillText("GAME OVER", 105, 320);
+
+    ctx.font = "22px Arial";
+    ctx.fillText("Press ENTER to restart", 135, 365);
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
